@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import stripe
 import os
@@ -8,7 +9,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize FastAPI app
-app = FastAPI(title="Stripe Subscription Checker")
+app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://*.theflowstage.com"],  # Allow all subdomains of theflowstage.com
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
+# Initialize FastAPI app with title
+app.title = "Stripe Subscription Checker"
 
 # Configure Stripe
 stripe.api_key = os.getenv("STRIPE_API_KEY")
