@@ -4,12 +4,16 @@ from pydantic import BaseModel
 import stripe
 import os
 from dotenv import load_dotenv
+import uvicorn
 
 # Load environment variables
 load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Get port from environment variable or default to 8000
+port = int(os.getenv("PORT", 8000))
 
 # Configure CORS
 app.add_middleware(
@@ -55,15 +59,15 @@ async def list_subscriptions(request: EmailCheck):
         # Find customer by email
         try:
             customers = stripe.Customer.list(email=request.email)
-            print(f"Found {len(customers.data)} customers")
+            print(f"Found {len(customers.get('data', []))} customers")
         except stripe.error.StripeError as e:
             print(f"Stripe API error during customer lookup: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Stripe API error: {str(e)}")
         except Exception as e:
-            print(f"Unexpected error during customer lookup: {str(e)}")
-            raise HTTPException(status_code=500, detail="Internal server error during customer lookup")
-        
-        if not customers.data:
+            print(f"Unhandled error: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+        if not customers.get('data', []):
             print("No customers found")
             raise HTTPException(status_code=404, detail="No customer found with this email")
             
@@ -71,21 +75,21 @@ async def list_subscriptions(request: EmailCheck):
         all_items = []
         try:
             print("Fetching subscriptions...")
-            for customer in customers.data:
-                print(f"Processing customer {customer.id}")
+            for customer in customers.get('data', []):
+                print(f"Processing customer {customer.get('id')}")
                 try:
-                    customer_subs = stripe.Subscription.list(customer=customer.id)
-                    print(f"Found {len(customer_subs.data)} subscriptions")
+                    customer_subs = stripe.Subscription.list(customer=customer.get('id'))
+                    print(f"Found {len(customer_subs.get('data', []))} subscriptions")
                     
-                    for sub in customer_subs.data:
-                        print(f"Processing subscription {sub.id}")
-                        for item in sub.items.data:
+                    for sub in customer_subs.get('data', []):
+                        print(f"Processing subscription {sub.get('id')}")
+                        for item in sub.get('items', {}).get('data', []):
                             try:
                                 all_items.append({
-                                    "plan_id": item.plan.id,
-                                    "plan_active": item.plan.active,
-                                    "price_id": item.price.id,
-                                    "price_active": item.price.active
+                                    "plan_id": item.get('plan', {}).get('id'),
+                                    "plan_active": item.get('plan', {}).get('active'),
+                                    "price_id": item.get('price', {}).get('id'),
+                                    "price_active": item.get('price', {}).get('active')
                                 })
                             except Exception as e:
                                 print(f"Error processing subscription item: {str(e)}")
