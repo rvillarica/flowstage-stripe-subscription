@@ -45,7 +45,10 @@ async def check_price(request: PriceCheck):
         customers = stripe.Customer.list(email=request.email)
         if not customers.get('data', []):
             print("No customers found")
-            raise HTTPException(status_code=404, detail="No customer found with this email")
+            return {
+                "price_id": request.price_id,
+                "price_active": False
+            }
 
         # Look for the price in customer's subscriptions
         for customer in customers.get('data', []):
@@ -58,8 +61,11 @@ async def check_price(request: PriceCheck):
                             "price_active": item.get('price', {}).get('active')
                         }
 
-        # If we get here, the price wasn't found
-        raise HTTPException(status_code=404, detail="Price not found in customer's subscriptions")
+        # If we get here, the price wasn't found, return inactive status
+        return {
+            "price_id": request.price_id,
+            "price_active": False
+        }
 
     except HTTPException as e:
         raise e
