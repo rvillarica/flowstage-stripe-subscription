@@ -14,7 +14,7 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://*.theflowstage.com"],  # Allow all subdomains of theflowstage.com
+    allow_origins=["*"],  # Allow all subdomains of theflowstage.com
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
