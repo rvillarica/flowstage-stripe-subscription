@@ -33,6 +33,43 @@ stripe.api_key = os.getenv("STRIPE_API_KEY")
 class EmailCheck(BaseModel):
     email: str
 
+class PriceCheck(BaseModel):
+    email: str
+    price_id: str
+
+@app.post("/check-price")
+async def check_price(request: PriceCheck):
+    print(f"Checking price {request.price_id} for email {request.email}")
+    try:
+        # Find customer by email
+        customers = stripe.Customer.list(email=request.email)
+        if not customers.get('data', []):
+            print("No customers found")
+            raise HTTPException(status_code=404, detail="No customer found with this email")
+
+        # Look for the price in customer's subscriptions
+        for customer in customers.get('data', []):
+            customer_subs = stripe.Subscription.list(customer=customer.get('id'))
+            for sub in customer_subs.get('data', []):
+                for item in sub.get('items', {}).get('data', []):
+                    if item.get('price', {}).get('id') == request.price_id:
+                        return {
+                            "price_id": item.get('price', {}).get('id'),
+                            "price_active": item.get('price', {}).get('active')
+                        }
+
+        # If we get here, the price wasn't found
+        raise HTTPException(status_code=404, detail="Price not found in customer's subscriptions")
+
+    except HTTPException as e:
+        raise e
+    except stripe.error.StripeError as e:
+        print(f"Stripe API error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stripe API error: {str(e)}")
+    except Exception as e:
+        print(f"Unhandled error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @app.get("/health")
 async def health_check():
     try:
